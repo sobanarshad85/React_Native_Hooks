@@ -1,29 +1,43 @@
-import React, { Component, useReducer,useContext } from 'react';
+import React, { Component, useReducer, useContext, useEffect } from 'react';
 import { Platform, StyleSheet, Text, View, TouchableOpacity, CheckBox, TextInput } from 'react-native';
-// import console = require('console');
+import AsyncStorage from '@react-native-community/async-storage';
 
 appReducer = (state, action) => {
   switch (action.type) {
+    case 'reset': {
+      return action.payload.map(item => item);
+    }
     case 'add': {
       return [
         ...state,
         {
-          id: Date.now(),
-          text: '',
-          completed: false
+          'id': Date.now(),
+          'text': '',
+          'completed': false
         }
       ]
     }
-    case 'delete':{
-      // it could be return state.filter(item=>item.id!==action.payload)
-      return state.filter((item)=>{
-        return item.id!==action.payload
+    case 'text': {
+      return state.map((item) => {
+        if (action.id === item.id) {
+          return {
+            ...item,
+            text: action.payload
+          }
+        }
+        return item;
       })
     }
-    case 'completed':{
-      return state.map((item)=>{
-        if(item.id === action.payload){
-          return {...item,completed:!item.completed}
+    case 'delete': {
+      // it could be return state.filter(item=>item.id!==action.payload)
+      return state.filter((item) => {
+        return item.id !== action.payload
+      })
+    }
+    case 'completed': {
+      return state.map((item) => {
+        if (item.id === action.payload) {
+          return { ...item, completed: !item.completed }
         };
         return item;
       })
@@ -34,17 +48,66 @@ appReducer = (state, action) => {
   }
 }
 
-const Context=React.createContext();
+storeData = async (key, value) => {
+  try {
+    await AsyncStorage.setItem(key, value)
+  } catch (e) {
+    // saving error
+  }
+}
+
+getData = async (key) => {
+  try {
+    const value = await AsyncStorage.getItem(key)
+    if (value !== null) {
+      // value previously stored
+      console.warn(value)
+      return value
+    }
+  } catch (e) {
+    console.warn(e)
+    // error reading value
+  }
+}
+
+removeValue = async (key) => {
+  try {
+    await AsyncStorage.removeItem(key)
+  } catch (e) {
+    // remove error
+  }
+
+  console.log('Done.')
+}
+
+const Context = React.createContext();
 
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, [])
+
+  useEffect(() => {
+
+    this.getData('data').then(data => dispatch({ type: 'reset', payload: JSON.parse(data) }));
+
+  }, []);
+
+  useEffect(
+    () => {
+      this.storeData('data', JSON.stringify(state));
+    },
+    [state]
+  );
+
   return (
     <Context.Provider value={dispatch} >
-    <View style={styles.container}>
-      <Text style={styles.welcome}>Todo App Using Hook</Text>
-      <TodosList state={state} />
-      <TouchableOpacity onPress={() => dispatch({ type: 'add' })}><Text>Add Todo</Text></TouchableOpacity>
-    </View>
+      <View style={styles.container}>
+        <Text style={styles.welcome}>Todo App Using Hook</Text>
+        <TodosList state={state} />
+        <TouchableOpacity onPress={() => dispatch({ type: 'add' })}><Text>Add Todo</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => this.storeData('name', 'soban')}><Text>Set Data</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => this.getData('name')}><Text>Get Data</Text></TouchableOpacity>
+
+      </View>
     </Context.Provider>
   );
 }
@@ -63,15 +126,19 @@ TodosList = ({ state }) => { // it can also be props and retrievel will be props
 }
 
 TodoItem = ({ id, completed, text }) => { //again it can be props and retreivel will be props.id
-const dispatch =useContext(Context);
+  const dispatch = useContext(Context);
   return (
-    <View style={{ flexDirection: 'row',marginBottom:5 }}>
-      <CheckBox value={completed} onValueChange={()=>dispatch({type:'completed',payload:id})} />
-      <TextInput defaultValue={text} 
-      style={{borderColor:'gray',borderWidth:1,width:100}} />
-      <TouchableOpacity onPress={()=>dispatch({type:'delete',payload:id})} >
-        <Text>Delete</Text>
-      </TouchableOpacity>
+    <View style={{marginBottom: 5 }}>
+      <View style={{ flexDirection: 'row', }}>
+        <CheckBox value={completed} onValueChange={() => dispatch({ type: 'completed', payload: id })} />
+        <TextInput
+          onChangeText={(text) => dispatch({ type: 'text', payload: text, id: id })}
+          style={{ borderColor: 'gray', borderWidth: 1, width: 100 }} />
+        <TouchableOpacity onPress={() => dispatch({ type: 'delete', payload: id })} >
+          <Text>Delete</Text>
+        </TouchableOpacity>
+      </View>
+      <Text >{text}</Text>
     </View>
   )
 }
