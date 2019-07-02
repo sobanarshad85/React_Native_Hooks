@@ -1,4 +1,4 @@
-import React, { Component, useReducer, useContext, useEffect } from 'react';
+import React, { Component, useReducer, useContext, useEffect, useRef } from 'react';
 import { Platform, StyleSheet, Text, View, TouchableOpacity, CheckBox, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-community/async-storage';
 
@@ -82,14 +82,24 @@ removeValue = async (key) => {
 
 const Context = React.createContext();
 
+useEffectOnce = (callBack) => {
+  const didRun = useRef(false);
+
+  useEffect(() => {
+    if (!didRun.current) {
+      callBack();
+      didRun.current = true;
+    }
+  })
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, [])
 
-  useEffect(() => {
-
+  this.useEffectOnce(()=>{
     this.getData('data').then(data => dispatch({ type: 'reset', payload: JSON.parse(data) }));
 
-  }, []);
+  });
 
   useEffect(
     () => {
@@ -104,9 +114,6 @@ export default function App() {
         <Text style={styles.welcome}>Todo App Using Hook</Text>
         <TodosList state={state} />
         <TouchableOpacity onPress={() => dispatch({ type: 'add' })}><Text>Add Todo</Text></TouchableOpacity>
-        <TouchableOpacity onPress={() => this.storeData('name', 'soban')}><Text>Set Data</Text></TouchableOpacity>
-        <TouchableOpacity onPress={() => this.getData('name')}><Text>Get Data</Text></TouchableOpacity>
-
       </View>
     </Context.Provider>
   );
@@ -128,7 +135,7 @@ TodosList = ({ state }) => { // it can also be props and retrievel will be props
 TodoItem = ({ id, completed, text }) => { //again it can be props and retreivel will be props.id
   const dispatch = useContext(Context);
   return (
-    <View style={{marginBottom: 5 }}>
+    <View style={{ marginBottom: 5 }}>
       <View style={{ flexDirection: 'row', }}>
         <CheckBox value={completed} onValueChange={() => dispatch({ type: 'completed', payload: id })} />
         <TextInput
