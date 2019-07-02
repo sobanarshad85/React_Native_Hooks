@@ -61,7 +61,7 @@ getData = async (key) => {
     const value = await AsyncStorage.getItem(key)
     if (value !== null) {
       // value previously stored
-      console.warn(value)
+      // console.warn(value)
       return value
     }
   } catch (e) {
